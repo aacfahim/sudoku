@@ -12,11 +12,11 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
+  // This game is specially made for my Wife, Rinky <3
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => SudokuProvider(),
-
       child: MaterialApp(
         title: 'Sudoku Game',
         theme: ThemeData(primarySwatch: Colors.blue),
@@ -26,4 +26,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
