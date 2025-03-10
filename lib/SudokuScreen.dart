@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'SudokoProvider.dart';
+import 'package:sudoku_app/SudokoProvider.dart';
+import 'dart:math';
+
+import 'package:sudoku_app/SudokuBoard.dart';
 
 class SudokuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final sudokuProvider = context.watch<SudokuProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Sudoku Game"),
@@ -12,10 +17,10 @@ class SudokuScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
-              "Made with 😘\nby Ashfaq",
-              style: TextStyle(fontSize: 8),
+              "Made with 💖\nby Ashfaq",
+              style: TextStyle(fontSize: 10),
             ),
-          )
+          ),
         ],
       ),
       drawer: Drawer(
@@ -33,28 +38,24 @@ class SudokuScreen extends StatelessWidget {
               leading: Icon(Icons.refresh),
               title: Text("Notun kore khelba?\nEkhane tip deo"),
               onTap: () {
-                context.read<SudokuProvider>().generateSudoku();
-                Navigator.pop(context); // Close the drawer
+                context.read<SudokuProvider>().resetGame();
+                Navigator.pop(context);
               },
             ),
             ListTile(
               leading: Icon(Icons.history),
               title: Text("Win History 👇"),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-              },
+              onTap: () => Navigator.pop(context),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: context
-                    .watch<SudokuProvider>()
-                    .winHistory
+                children: sudokuProvider.winHistory
                     .map((history) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Text(
-                            history,
+                            history, // Add the history text here
                             style: TextStyle(fontSize: 16, color: Colors.black),
                           ),
                         ))
@@ -66,138 +67,99 @@ class SudokuScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Expanded(child: SudokuBoard()),
-          TextButton(
-              onPressed: () {
-                context.read<SudokuProvider>().undo();
-              },
-              child: Text("Undo")),
+          // Display Hearts
           Padding(
-            padding: const EdgeInsets.only(bottom: 30),
-            child: ElevatedButton(
-              onPressed: () {
-                if (context.read<SudokuProvider>().isGameWon()) {
-                  context
-                      .read<SudokuProvider>()
-                      .addWinToHistory(); // Save the win history
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text("Congrats! You Won 😍"),
-                      content: Text(
-                          context.read<SudokuProvider>().getRandomWinMessage()),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text("OK"),
-                        ),
-                      ],
+            padding: const EdgeInsets.all(8.0),
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '❤️' * sudokuProvider.lives,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Solve e to koro nai 😒")),
-                  );
-                }
-              },
-              child: Text("Press ME to check 😉"),
+                  ),
+                  TextSpan(
+                    text: '🖤' * (3 - sudokuProvider.lives),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[400], // Light ash color
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+
+          // If game is over, show the "Game Over" message
+          if (sudokuProvider.lives == 0)
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    "Game Over",
+                    style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red),
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      sudokuProvider.resetGame();
+                    },
+                    child: Text("Start a new game"),
+                  ),
+                ],
+              ),
+            )
+          else
+            Expanded(child: SudokuBoard()), // Otherwise, show the board
+
+          // Show the game action buttons
+          if (sudokuProvider.lives > 0)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TextButton(
+                  onPressed: sudokuProvider.boardHistory.isNotEmpty
+                      ? () => sudokuProvider.undo()
+                      : null,
+                  child: Text("Undo"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (sudokuProvider.isGameWon()) {
+                      sudokuProvider.addWinToHistory();
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text("Congrats! You Won 🎉"),
+                          content: Text(sudokuProvider.getRandomWinMessage()),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("OK"),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Solve e to koro nai 😒")),
+                      );
+                    }
+                  },
+                  child: Text("Check Result"),
+                ),
+              ],
+            ),
+          SizedBox(height: 20),
         ],
       ),
-    );
-  }
-}
-
-class SudokuBoard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 9,
-        crossAxisSpacing: 1,
-        mainAxisSpacing: 1,
-      ),
-      itemCount: 81,
-      itemBuilder: (context, index) {
-        int row = index ~/ 9;
-        int col = index % 9;
-        int value = context.watch<SudokuProvider>().board[row][col];
-
-        // Determine if the current cell is in the border of a 3x3 block
-        bool isIn3x3Border = (row % 3 == 0 || col % 3 == 0);
-
-        return GestureDetector(
-          onTap: () {
-            if (value == 0) {
-              _showNumberInputDialog(context, row, col);
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: (col % 3 == 0) ? Colors.black : Colors.transparent,
-                  width: 2,
-                ),
-                top: BorderSide(
-                  color: (row % 3 == 0) ? Colors.black : Colors.transparent,
-                  width: 2,
-                ),
-                right: BorderSide(
-                  color: (col % 3 == 2) ? Colors.black : Colors.transparent,
-                  width: 2,
-                ),
-                bottom: BorderSide(
-                  color: (row % 3 == 2) ? Colors.black : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              color: value == 0 ? Colors.white : Colors.grey[300],
-            ),
-            child: Container(
-              margin: EdgeInsets.all(1),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color:
-                      Colors.grey.withOpacity(0.5), // subtle inner border color
-                  width: 0.5,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  value == 0 ? "" : value.toString(),
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showNumberInputDialog(BuildContext context, int row, int col) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Enter a number babe"),
-          content: Wrap(
-            children: List.generate(9, (index) {
-              return TextButton(
-                onPressed: () {
-                  context
-                      .read<SudokuProvider>()
-                      .updateCell(row, col, index + 1);
-                  Navigator.pop(context);
-                },
-                child: Text("${index + 1}"),
-              );
-            }),
-          ),
-        );
-      },
     );
   }
 }
